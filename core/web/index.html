@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>局域网共享</title>
+<style>
+  :root { --bg:#f5f5f4; --card:#fff; --fg:#1c1917; --muted:#78716c; --line:#e7e5e4; --accent:#2563eb; --danger:#dc2626; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1c1917; --card:#292524; --fg:#f5f5f4; --muted:#a8a29e; --line:#44403c; --accent:#60a5fa; --danger:#f87171; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:20px 16px 60px; }
+  header { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin:4px 0 16px; flex-wrap:wrap; }
+  h1 { font-size:20px; margin:0; }
+  .hint { color:var(--muted); font-size:13px; font-weight:normal; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 10px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  textarea { width:100%; min-height:220px; resize:vertical; padding:10px; border:1px solid var(--line); border-radius:8px;
+             background:var(--bg); color:var(--fg); font:14px/1.5 ui-monospace, Menlo, monospace; }
+  .row { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  button { border:1px solid var(--line); background:var(--card); color:var(--fg); padding:7px 14px; border-radius:8px; cursor:pointer; font-size:14px; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.danger { color:var(--danger); }
+  button.link { border:none; background:none; color:var(--accent); padding:0; font-size:14px; white-space:nowrap; }
+  @media (max-width:480px) { #invite h2 .hint { display:none; } }
+
+  #invite .body { display:flex; gap:20px; align-items:center; flex-wrap:wrap; }
+  #invite img { width:180px; height:180px; border-radius:8px; background:#fff; padding:8px; flex:none; }
+  #invite .meta { flex:1; min-width:200px; }
+  #invite .label { color:var(--muted); font-size:13px; margin-top:8px; }
+  #invite .label:first-child { margin-top:0; }
+  #invite .big { font:600 17px/1.4 ui-monospace, Menlo, monospace; word-break:break-all; }
+  #invite .code { font-size:28px; letter-spacing:6px; }
+  #invite.collapsed .body { display:none; }
+  #invite.collapsed h2 { margin:0; }
+
+  #drop { border:2px dashed var(--line); border-radius:10px; padding:22px; text-align:center; color:var(--muted); cursor:pointer; }
+  #drop.over { border-color:var(--accent); color:var(--accent); }
+  ul { list-style:none; padding:0; margin:12px 0 0; }
+  li { display:flex; align-items:center; gap:8px; padding:8px 0; border-top:1px solid var(--line); }
+  li a { color:var(--accent); text-decoration:none; flex:1; word-break:break-all; }
+  li .size { color:var(--muted); font-size:13px; white-space:nowrap; }
+  li button { padding:3px 10px; font-size:13px; }
+  progress { width:100%; margin-top:10px; display:none; }
+  #stopped { display:none; text-align:center; padding:60px 16px; color:var(--muted); }
+</style>
+</head>
+<body>
+<main id="app">
+  <header>
+    <h1>局域网共享</h1>
+    <span class="hint" id="hostinfo"></span>
+  </header>
+
+  <section id="invite" class="collapsed">
+    <h2>
+      <span>邀请别人加入 <span class="hint">连同一个 Wi-Fi，扫码即可进入</span></span>
+      <button class="link" id="toggleInvite">显示二维码</button>
+    </h2>
+    <div class="body">
+      <img id="qr" alt="二维码">
+      <div class="meta">
+        <div class="label">或在浏览器输入地址</div>
+        <div class="big" id="addr"></div>
+        <div id="pwbox">
+          <div class="label">访问码</div>
+          <div class="big code" id="pw"></div>
+        </div>
+        <div class="row">
+          <button id="copyLink">复制邀请链接</button>
+          <button class="danger" id="stop" hidden>停止共享</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>共享文字 <span class="hint" id="status"></span></h2>
+    <textarea id="text" placeholder="在这里输入或粘贴文字，点保存后，同一 Wi-Fi 下的其他设备打开本页面就能看到"></textarea>
+    <div class="row">
+      <button class="primary" id="save">保存 (⌘/Ctrl+S)</button>
+      <button id="copy">复制全部</button>
+      <button id="clear">清空</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>共享文件 <span class="hint" id="fcount"></span></h2>
+    <div id="drop">点击选择文件，或把文件拖到这里</div>
+    <input type="file" id="picker" multiple hidden>
+    <progress id="prog" max="100" value="0"></progress>
+    <ul id="list"></ul>
+  </section>
+</main>
+<div id="stopped">共享已停止，可以关掉这个页面了。</div>
+<script>
+const $ = s => document.querySelector(s);
+const ta = $('#text'), status = $('#status');
+let version = 0, dirty = false, info = {};
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (r.status === 401) { location.reload(); throw new Error('需要访问码'); }
+  return r.json();
+}
+
+// 复制：非 https 页面里 clipboard API 常常不可用，退回老办法
+async function copyText(s) {
+  try { await navigator.clipboard.writeText(s); return; } catch {}
+  const t = document.createElement('textarea');
+  t.value = s; t.style.position = 'fixed'; t.style.opacity = '0';
+  document.body.append(t); t.select(); document.execCommand('copy'); t.remove();
+}
+
+// ---------- 邀请 ----------
+function setInvite(open) {
+  $('#invite').classList.toggle('collapsed', !open);
+  $('#toggleInvite').textContent = open ? '收起' : '显示二维码';
+  if (open) $('#qr').src = '/api/qr?t=' + Date.now();
+}
+$('#toggleInvite').onclick = () => setInvite($('#invite').classList.contains('collapsed'));
+
+async function loadInfo(first) {
+  const prev = info.url;
+  info = await api('/api/info');
+  $('#addr').textContent = info.url;
+  $('#pwbox').hidden = !info.password;
+  $('#pw').textContent = info.password;
+  $('#stop').hidden = !info.isHost;
+  $('#hostinfo').textContent = info.isHost ? '这台电脑正在共享' : '来自 ' + info.host;
+  if (first) setInvite(info.isHost);                 // 开共享的电脑默认展开二维码
+  else if (prev !== info.url && !$('#invite').classList.contains('collapsed')) setInvite(true); // 换了 Wi-Fi，刷新二维码
+}
+$('#copyLink').onclick = async () => { await copyText(info.joinUrl); $('#copyLink').textContent = '已复制'; setTimeout(() => $('#copyLink').textContent = '复制邀请链接', 1500); };
+$('#stop').onclick = async () => {
+  if (!confirm('停止共享后，其他设备就连不上了。确定吗？')) return;
+  await fetch('/api/stop', {method: 'POST'});
+  clearInterval(timer);
+  $('#app').style.display = 'none'; $('#stopped').style.display = 'block';
+};
+
+// ---------- 文字 ----------
+function setStatus(s) { status.textContent = s; }
+async function loadText(force) {
+  const r = await api('/api/text');
+  if (r.version === version && !force) return;
+  if (dirty && !force) { setStatus('其他设备有更新（保存会覆盖）'); return; }
+  ta.value = r.text; version = r.version; dirty = false;
+  setStatus('已同步 ' + new Date().toLocaleTimeString());
+}
+async function saveText() {
+  const r = await api('/api/text', {method: 'POST', body: JSON.stringify({text: ta.value})});
+  version = r.version; dirty = false;
+  setStatus('已保存 ' + new Date().toLocaleTimeString());
+}
+ta.addEventListener('input', () => { dirty = true; setStatus('未保存'); });
+$('#save').onclick = saveText;
+$('#clear').onclick = () => { if (ta.value && !confirm('清空共享文字？')) return; ta.value = ''; dirty = true; saveText(); };
+$('#copy').onclick = async () => { await copyText(ta.value); setStatus('已复制'); };
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); saveText(); }
+});
+
+// ---------- 文件 ----------
+function fmtSize(n) {
+  const u = ['B', 'KB', 'MB', 'GB']; let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return (i ? n.toFixed(1) : n) + ' ' + u[i];
+}
+let lastFiles = '';
+async function loadFiles() {
+  const files = await api('/api/files');
+  const sig = JSON.stringify(files);
+  if (sig === lastFiles) return;   // 没变化就不重绘，避免列表闪
+  lastFiles = sig;
+  $('#fcount').textContent = files.length ? files.length + ' 个文件' : '';
+  const list = $('#list'); list.innerHTML = '';
+  for (const f of files) {
+    const li = document.createElement('li');
+    const a = document.createElement('a');
+    a.href = '/files/' + encodeURIComponent(f.name); a.textContent = f.name;
+    const size = document.createElement('span'); size.className = 'size'; size.textContent = fmtSize(f.size);
+    const del = document.createElement('button'); del.textContent = '删除';
+    del.onclick = async () => {
+      if (!confirm('删除 ' + f.name + '？')) return;
+      await api('/api/delete', {method: 'POST', body: JSON.stringify({name: f.name})});
+      loadFiles();
+    };
+    li.append(a, size, del); list.append(li);
+  }
+}
+function upload(file) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest(), prog = $('#prog');
+    xhr.open('POST', '/api/upload?name=' + encodeURIComponent(file.name));
+    xhr.upload.onprogress = e => { if (e.lengthComputable) prog.value = e.loaded / e.total * 100; };
+    xhr.onload = () => xhr.status === 200 ? resolve() : reject(new Error(xhr.responseText));
+    xhr.onerror = () => reject(new Error('网络错误'));
+    prog.style.display = 'block'; prog.value = 0;
+    xhr.send(file);
+  });
+}
+async function uploadAll(files) {
+  try { for (const f of files) await upload(f); }
+  catch (e) { alert('上传失败：' + e.message); }
+  $('#prog').style.display = 'none';
+  loadFiles();
+}
+const drop = $('#drop'), picker = $('#picker');
+drop.onclick = () => picker.click();
+picker.onchange = () => { uploadAll([...picker.files]); picker.value = ''; };
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); uploadAll([...e.dataTransfer.files]); };
+
+loadInfo(true); loadText(true); loadFiles();
+const timer = setInterval(() => { loadText(false); loadFiles(); loadInfo(false); }, 3000);
+</script>
+</body>
+</html>

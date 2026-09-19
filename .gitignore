@@ -1,0 +1,7 @@
+dist/
+bin/
+.DS_Store
+
+# 旧版 Python 服务留下的数据，别提交
+shared_text.txt
+files/

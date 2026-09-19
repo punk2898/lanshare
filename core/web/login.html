@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>局域网共享</title>
+<style>
+  :root { --bg:#f5f5f4; --card:#fff; --fg:#1c1917; --muted:#78716c; --line:#e7e5e4; --accent:#2563eb; --danger:#dc2626; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1c1917; --card:#292524; --fg:#f5f5f4; --muted:#a8a29e; --line:#44403c; --accent:#60a5fa; --danger:#f87171; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:16px;
+         background:var(--bg); color:var(--fg); font:15px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  form { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:24px; width:100%; max-width:340px; text-align:center; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  p { color:var(--muted); font-size:13px; margin:0 0 18px; }
+  input { width:100%; padding:10px; font-size:24px; letter-spacing:8px; text-align:center; border:1px solid var(--line);
+          border-radius:8px; background:var(--bg); color:var(--fg); }
+  button { width:100%; margin-top:12px; padding:10px; border:none; border-radius:8px; background:var(--accent); color:#fff; font-size:15px; cursor:pointer; }
+  #err { color:var(--danger); font-size:13px; min-height:20px; margin-top:8px; }
+</style>
+</head>
+<body>
+<form id="f">
+  <h1>局域网共享</h1>
+  <p>输入开启共享那台电脑页面上显示的访问码</p>
+  <input id="pw" inputmode="numeric" autocomplete="off" autofocus placeholder="····">
+  <button>进入</button>
+  <div id="err"></div>
+</form>
+<script>
+document.getElementById('f').onsubmit = async e => {
+  e.preventDefault();
+  const r = await fetch('/api/login', {method: 'POST', body: JSON.stringify({password: document.getElementById('pw').value})});
+  if (r.ok) location.href = '/';
+  else document.getElementById('err').textContent = '访问码不对，再看一下';
+};
+</script>
+</body>
+</html>
