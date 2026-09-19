@@ -1,5 +1,6 @@
 #!/bin/bash
 # 打包 Mac 客户端：dist/局域网共享.app（同时支持 Apple 芯片和 Intel），外加一个方便分发的 zip。
+# zip 用英文名，因为 GitHub Releases 会把附件名里的中文吞掉。
 # 需要：Go、Xcode 命令行工具（lipo / iconutil / codesign，Mac 上一般都有）。
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -10,7 +11,7 @@ APP="dist/$NAME.app"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-rm -rf "$APP" "dist/$NAME-mac.zip"
+rm -rf "$APP" "dist/LANShare-mac.zip"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 echo "→ 编译（arm64 + amd64）"
@@ -51,7 +52,7 @@ EOF
 
 echo "→ 签名（ad-hoc）并打包"
 codesign --force --deep --sign - "$APP"
-(cd dist && ditto -c -k --keepParent "$NAME.app" "$NAME-mac.zip")
+(cd dist && ditto -c -k --keepParent "$NAME.app" "LANShare-mac.zip")
 
 echo "完成：$APP"
-echo "      dist/$NAME-mac.zip"
+echo "      dist/LANShare-mac.zip"
