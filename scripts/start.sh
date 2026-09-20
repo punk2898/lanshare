@@ -5,21 +5,21 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-BIN="bin/lanshare"
+BIN="bin/localshare"
 mkdir -p bin
 
 if command -v go >/dev/null 2>&1; then
-  go build -o "$BIN" ./cmd/lanshare
+  go build -o "$BIN" ./cmd/localshare
 elif [ ! -x "$BIN" ]; then
   os=$(uname -s | tr '[:upper:]' '[:lower:]')
   arch=$(uname -m); [ "$arch" = "x86_64" ] && arch=amd64; [ "$arch" = "aarch64" ] && arch=arm64
-  # 从 git remote 推出仓库地址，例如 git@github.com:foo/lanshare.git → foo/lanshare
+  # 从 git remote 推出仓库地址，例如 git@github.com:foo/localshare.git → foo/localshare
   repo=$(git remote get-url origin 2>/dev/null | sed -E 's#(git@|https://)github.com[:/]##; s#\.git$##')
   if [ -z "$repo" ]; then
     echo "没装 Go，也找不到 GitHub 仓库地址。请先安装 Go：https://go.dev/dl/" >&2
     exit 1
   fi
-  url="https://github.com/$repo/releases/latest/download/lanshare-$os-$arch"
+  url="https://github.com/$repo/releases/latest/download/localshare-$os-$arch"
   echo "下载 $url"
   curl -fL --progress-bar -o "$BIN" "$url"
   chmod +x "$BIN"

@@ -29,8 +29,8 @@ import (
 var webFS embed.FS
 
 const (
-	AppID      = "lanshare"
-	cookieName = "lanshare_key"
+	AppID      = "localshare"
+	cookieName = "localshare_key"
 )
 
 type Server struct {

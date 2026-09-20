@@ -19,7 +19,7 @@ import (
 
 	qrcode "github.com/skip2/go-qrcode"
 
-	"lanshare/core"
+	"localshare/core"
 )
 
 type config struct {
@@ -29,7 +29,7 @@ type config struct {
 func main() {
 	home, _ := os.UserHomeDir()
 	port := flag.Int("port", 8000, "端口，被占用时自动往后找")
-	dir := flag.String("dir", filepath.Join(home, "LANShare"), "数据目录（共享的文字和文件存这里）")
+	dir := flag.String("dir", filepath.Join(home, "Localshare"), "数据目录（共享的文字和文件存这里）")
 	password := flag.String("password", "", "指定访问码（会记住，下次沿用）")
 	noPassword := flag.Bool("no-password", false, "这次不设访问码，谁连上 Wi-Fi 都能进")
 	noOpen := flag.Bool("no-open", false, "启动后不自动打开浏览器")

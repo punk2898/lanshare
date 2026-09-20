@@ -11,14 +11,14 @@ APP="dist/$NAME.app"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-rm -rf "$APP" "dist/LANShare-mac.zip"
+rm -rf "$APP" "dist/Localshare-mac.zip"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 echo "→ 编译（arm64 + amd64）"
 for arch in arm64 amd64; do
-  GOOS=darwin GOARCH=$arch CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "$TMP/lanshare-$arch" ./cmd/lanshare
+  GOOS=darwin GOARCH=$arch CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "$TMP/localshare-$arch" ./cmd/localshare
 done
-lipo -create -output "$APP/Contents/MacOS/lanshare" "$TMP/lanshare-arm64" "$TMP/lanshare-amd64"
+lipo -create -output "$APP/Contents/MacOS/localshare" "$TMP/localshare-arm64" "$TMP/localshare-amd64"
 
 echo "→ 生成图标"
 go run ./scripts/icon "$TMP/icon.png"
@@ -38,8 +38,8 @@ cat > "$APP/Contents/Info.plist" <<EOF
 <dict>
   <key>CFBundleName</key><string>$NAME</string>
   <key>CFBundleDisplayName</key><string>$NAME</string>
-  <key>CFBundleIdentifier</key><string>app.lanshare</string>
-  <key>CFBundleExecutable</key><string>lanshare</string>
+  <key>CFBundleIdentifier</key><string>app.localshare</string>
+  <key>CFBundleExecutable</key><string>localshare</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
@@ -52,7 +52,7 @@ EOF
 
 echo "→ 签名（ad-hoc）并打包"
 codesign --force --deep --sign - "$APP"
-(cd dist && ditto -c -k --keepParent "$NAME.app" "LANShare-mac.zip")
+(cd dist && ditto -c -k --keepParent "$NAME.app" "Localshare-mac.zip")
 
 echo "完成：$APP"
-echo "      dist/LANShare-mac.zip"
+echo "      dist/Localshare-mac.zip"
